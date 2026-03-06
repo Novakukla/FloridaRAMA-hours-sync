@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Art Experience Hours</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Rubik:ital,wght@0,400;0,500;0,600;0,700;1,500;1,600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: transparent;
+      --text: #f8fafc;
+      --muted: #d1d5db;
+      --border: rgba(255, 255, 255, 0.18);
+      --accent: #f6d159;
+      --panel: transparent;
+      --panel-header: transparent;
+      --brand-pink: #ef779f;
+      --brand-blue: #36a8de;
+      --brand-green: #3db489;
+      --brand-yellow: #f8c964;
+      --brand-orange: #f47948;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      font-family: "Rubik", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-weight: 500;
+      background: transparent;
+      background-color: transparent;
+      color: var(--text);
+    }
+
+    :root,
+    main,
+    .hours-wrap,
+    .hours-list,
+    .hours-table,
+    .hours-table th,
+    .hours-table td {
+      background: transparent !important;
+      background-color: transparent !important;
+    }
+
+    .hours-wrap {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 18px 16px;
+    }
+
+    .sub {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .status {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 1.03rem;
+      font-weight: 600;
+      font-style: italic;
+    }
+
+    .hours-list {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .hours-panel-title {
+      margin: 0 0 10px;
+      font-family: "Baloo 2", "Rubik", sans-serif;
+      text-transform: uppercase;
+      font-size: clamp(2.25rem, 4.05vw, 3.675rem);
+      font-weight: 800;
+      line-height: 0.98;
+      letter-spacing: 0.01em;
+      color: var(--accent);
+      text-align: center;
+      text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+    }
+
+    .hours-blurb {
+      margin: 0 0 16px;
+      color: #ffffff;
+      font-size: clamp(1rem, 1.9vw, 1.18rem);
+      line-height: 1.55;
+      font-style: italic;
+      font-weight: 600;
+      text-align: left;
+    }
+
+    .hours-table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      overflow: hidden;
+      background: var(--panel);
+    }
+
+    .hours-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .hours-table th,
+    .hours-table td {
+      text-align: left;
+      padding: 11px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+      vertical-align: middle;
+    }
+
+    .hours-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .hours-table th {
+      font-family: "Baloo 2", "Rubik", sans-serif;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.01em;
+      color: #ffffff;
+      font-weight: 800;
+      background: var(--panel-header);
+    }
+
+    .day-label {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #ffffff;
+      white-space: nowrap;
+    }
+
+    .time-cell {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #ffffff;
+      white-space: nowrap;
+    }
+
+    .empty,
+    .error {
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .error {
+      color: #fecaca;
+      border-color: rgba(248, 113, 113, 0.55);
+      background: rgba(127, 29, 29, 0.3);
+    }
+
+    @media (max-width: 760px) {
+      .hours-wrap {
+        padding: 14px 10px;
+      }
+
+      .hours-table th,
+      .hours-table td {
+        padding: 9px 10px;
+      }
+
+      .hours-table th {
+        font-size: 0.9rem;
+      }
+
+      .day-label,
+      .time-cell {
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="hours-wrap">
+    <h2 class="hours-panel-title">Standard Experience Hours</h2>
+
+    <p class="hours-blurb">We suggest arriving 1.5 hours prior to closing to maximize your experience! Check out the Upcoming Event Calendar for FloridaRAMA-hosted happenings.</p>
+    <p id="status" class="status">Loading hours...</p>
+    <div id="hoursContent"></div>
+  </main>
+
+  <script>
+    const HOURS_DATA_URL = "./data/hours.json";
+
+    const statusEl = document.getElementById("status");
+    const hoursContentEl = document.getElementById("hoursContent");
+
+    function renderRows(rows) {
+      hoursContentEl.innerHTML = "";
+
+      if (!rows.length) {
+        statusEl.style.display = "none";
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "No upcoming hours found.";
+        hoursContentEl.appendChild(empty);
+        return;
+      }
+
+      statusEl.textContent = "";
+      statusEl.style.display = "none";
+
+      const tableWrapper = document.createElement("div");
+      tableWrapper.className = "hours-table-wrap";
+
+      const table = document.createElement("table");
+      table.className = "hours-table";
+
+      const thead = document.createElement("thead");
+      const headRow = document.createElement("tr");
+      ["Day", "Open", "Close"].forEach((label) => {
+        const th = document.createElement("th");
+        th.textContent = label;
+        headRow.appendChild(th);
+      });
+      thead.appendChild(headRow);
+
+      const tbody = document.createElement("tbody");
+      for (const row of rows) {
+        const tr = document.createElement("tr");
+
+        const dayCell = document.createElement("td");
+        dayCell.className = "day-label";
+        dayCell.textContent = row.day;
+
+        const openCell = document.createElement("td");
+        openCell.className = "time-cell";
+        openCell.textContent = row.open;
+
+        const closeCell = document.createElement("td");
+        closeCell.className = "time-cell";
+        closeCell.textContent = row.close;
+
+        tr.appendChild(dayCell);
+        tr.appendChild(openCell);
+        tr.appendChild(closeCell);
+        tbody.appendChild(tr);
+      }
+
+      table.appendChild(thead);
+      table.appendChild(tbody);
+      tableWrapper.appendChild(table);
+      hoursContentEl.appendChild(tableWrapper);
+    }
+
+    async function loadHours() {
+      try {
+        const response = await fetch(HOURS_DATA_URL, { method: "GET", cache: "no-store" });
+
+        if (!response.ok) {
+          throw new Error("Could not load generated hours data");
+        }
+
+        const payload = await response.json();
+        const rows = Array.isArray(payload.rows) ? payload.rows : [];
+        renderRows(rows);
+      } catch (error) {
+        statusEl.className = "error";
+        statusEl.innerHTML = `Could not load hours: ${error.message} <button id='retryHoursBtn' style='margin-left:12px;padding:4px 12px;border-radius:6px;border:none;background:#f6d159;color:#222;font-weight:700;cursor:pointer;'>Retry</button>`;
+        const retryBtn = document.getElementById('retryHoursBtn');
+        if (retryBtn) {
+          retryBtn.onclick = () => {
+            statusEl.textContent = "Retrying...";
+            loadHours();
+          };
+        }
+      }
+    }
+
+    loadHours();
+  </script>
+</body>
+</html>

@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Special Hours</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Rubik:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --text: #f8fafc;
+      --muted: #d1d5db;
+      --border: rgba(255, 255, 255, 0.18);
+      --accent: #ef779f;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body,
+    main,
+    .wrap,
+    .table,
+    .table th,
+    .table td {
+      margin: 0;
+      background: transparent !important;
+      background-color: transparent !important;
+      color: var(--text);
+      font-family: "Rubik", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .wrap {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 18px 16px;
+    }
+
+    .status {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 1rem;
+      font-style: italic;
+      font-weight: 600;
+    }
+
+    .title {
+      margin: 0 0 10px;
+      font-family: "Baloo 2", "Rubik", sans-serif;
+      text-transform: uppercase;
+      font-size: clamp(2.4rem, 4.2vw, 3.75rem);
+      font-weight: 800;
+      line-height: 0.98;
+      letter-spacing: 0.01em;
+      color: var(--accent);
+      text-align: center;
+      text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+    }
+
+    .blurb {
+      margin: 0 0 16px;
+      color: #ffffff;
+      font-size: clamp(1rem, 1.8vw, 1.14rem);
+      line-height: 1.55;
+      font-style: italic;
+      font-weight: 600;
+    }
+
+    .table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      overflow: hidden;
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .table th,
+    .table th {
+      text-align: left;
+      padding: 11px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+      vertical-align: middle;
+      white-space: nowrap;
+      font-size: 1.02rem;
+      font-weight: 800;
+    }
+    .table td {
+      text-align: left;
+      padding: 11px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+      vertical-align: middle;
+      white-space: nowrap;
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    .table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .table th {
+      font-family: "Baloo 2", "Rubik", sans-serif;
+      font-size: 1.02rem;
+      text-transform: uppercase;
+      letter-spacing: 0.01em;
+      color: #ffffff;
+      font-weight: 800;
+    }
+
+    .type-cell {
+      font-size: 2rem;
+      min-width: 190px;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 0.96rem;
+      font-weight: 600;
+      font-style: italic;
+      margin-top: 10px;
+    }
+
+    .empty,
+    .error {
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      color: var(--muted);
+      font-size: 0.95rem;
+      font-style: italic;
+      font-weight: 600;
+    }
+
+    .error {
+      color: #fecaca;
+      border-color: rgba(248, 113, 113, 0.55);
+      background: rgba(127, 29, 29, 0.3);
+    }
+
+    @media (max-width: 760px) {
+      .wrap {
+        padding: 14px 10px;
+      }
+
+      .table th,
+      .table td {
+        padding: 9px 10px;
+      }
+
+      .table th {
+        font-size: 0.9rem;
+      }
+
+      .type-cell {
+        font-size: 0.9rem;
+        min-width: 130px;
+      }
+
+      .table td {
+        font-size: 0.9rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <h2 class="title">Special Hours</h2>
+    <br />
+    <p class="blurb">Planning your visit in advance? Check our updated hours for holidays and dates when we may be closed for private events.</p>
+    <br />
+    <p id="status" class="status">Loading special hours...</p>
+    <div id="content"></div>
+  </main>
+
+  <script>
+    const SPECIAL_HOURS_DATA_URL = "./data/special-hours.json";
+
+    const statusEl = document.getElementById("status");
+    const contentEl = document.getElementById("content");
+
+    function renderRows(rows) {
+      contentEl.innerHTML = "";
+
+      if (!rows.length) {
+        statusEl.style.display = "none";
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "No special hours in the next 30 days.";
+        contentEl.appendChild(empty);
+        return;
+      }
+
+      statusEl.style.display = "none";
+
+      const wrapper = document.createElement("div");
+      wrapper.className = "table-wrap";
+
+      const table = document.createElement("table");
+      table.className = "table";
+
+      const thead = document.createElement("thead");
+      const headRow = document.createElement("tr");
+      ["Type", "Date", "Open", "Close"].forEach((label) => {
+        const th = document.createElement("th");
+        th.textContent = label;
+        headRow.appendChild(th);
+      });
+      thead.appendChild(headRow);
+
+      const tbody = document.createElement("tbody");
+      for (const row of rows) {
+        const tr = document.createElement("tr");
+
+        const typeCell = document.createElement("td");
+        typeCell.className = "type-cell";
+        typeCell.textContent = row.type || "";
+
+        const dateCell = document.createElement("td");
+        dateCell.textContent = row.date || "";
+
+        const openCell = document.createElement("td");
+        openCell.textContent = row.open || "";
+
+        const closeCell = document.createElement("td");
+        closeCell.textContent = row.close || "";
+
+        tr.appendChild(typeCell);
+        tr.appendChild(dateCell);
+        tr.appendChild(openCell);
+        tr.appendChild(closeCell);
+
+        tbody.appendChild(tr);
+      }
+
+      table.appendChild(thead);
+      table.appendChild(tbody);
+      wrapper.appendChild(table);
+      contentEl.appendChild(wrapper);
+    }
+
+    async function loadSpecialHours() {
+      try {
+        const response = await fetch(SPECIAL_HOURS_DATA_URL, { method: "GET", cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("Could not load generated special-hours data");
+        }
+
+        const payload = await response.json();
+        const rows = Array.isArray(payload.rows) ? payload.rows : [];
+        renderRows(rows);
+      } catch (error) {
+        statusEl.className = "error";
+        statusEl.innerHTML = `Could not load special hours: ${error.message} <button id='retrySpecialBtn' style='margin-left:12px;padding:4px 12px;border-radius:6px;border:none;background:#ef779f;color:#fff;font-weight:700;cursor:pointer;'>Retry</button>`;
+        const retryBtn = document.getElementById("retrySpecialBtn");
+        if (retryBtn) {
+          retryBtn.onclick = () => {
+            statusEl.textContent = "Retrying...";
+            loadSpecialHours();
+          };
+        }
+      }
+    }
+
+    loadSpecialHours();
+  </script>
+</body>
+</html>
