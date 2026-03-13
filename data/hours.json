@@ -1,11 +1,6 @@
 {
-  "generatedAt": "2026-03-12T17:05:59.059Z",
+  "generatedAt": "2026-03-13T05:19:06.750Z",
   "rows": [
-    {
-      "day": "Thu, Mar 12",
-      "open": "12 pm",
-      "close": "8 pm"
-    },
     {
       "day": "Fri, Mar 13",
       "open": "12 pm",
@@ -33,6 +28,11 @@
     },
     {
       "day": "Wed, Mar 18",
+      "open": "12 pm",
+      "close": "8 pm"
+    },
+    {
+      "day": "Thu, Mar 19",
       "open": "12 pm",
       "close": "8 pm"
     }
