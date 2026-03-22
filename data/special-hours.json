@@ -1,12 +1,6 @@
 {
-  "generatedAt": "2026-03-21T05:13:07.527Z",
+  "generatedAt": "2026-03-22T05:33:38.305Z",
   "rows": [
-    {
-      "type": "Limited Hours",
-      "date": "3/21",
-      "open": "10 am",
-      "close": "4:30 pm"
-    },
     {
       "type": "Limited Hours",
       "date": "3/22",
