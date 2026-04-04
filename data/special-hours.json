@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-03T16:42:43.802Z",
+  "generatedAt": "2026-04-04T05:36:33.989Z",
   "rows": [
     {
       "type": "Limited Hours",
@@ -18,6 +18,12 @@
       "date": "4/16",
       "open": "12 pm",
       "close": "3:30 pm"
+    },
+    {
+      "type": "Bonus Hours",
+      "date": "4/24",
+      "open": "12 pm",
+      "close": "11 pm"
     }
   ]
 }
