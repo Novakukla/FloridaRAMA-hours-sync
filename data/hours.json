@@ -1,11 +1,6 @@
 {
-  "generatedAt": "2026-04-22T05:11:42.893Z",
+  "generatedAt": "2026-04-23T05:14:00.182Z",
   "rows": [
-    {
-      "day": "Wed, Apr 22",
-      "open": "Closed",
-      "close": "Closed"
-    },
     {
       "day": "Thu, Apr 23",
       "open": "12 pm",
@@ -14,7 +9,7 @@
     {
       "day": "Fri, Apr 24",
       "open": "12 pm",
-      "close": "5:30 pm"
+      "close": "5:00 pm"
     },
     {
       "day": "Sat, Apr 25",
@@ -33,6 +28,11 @@
     },
     {
       "day": "Tue, Apr 28",
+      "open": "Closed",
+      "close": "Closed"
+    },
+    {
+      "day": "Wed, Apr 29",
       "open": "Closed",
       "close": "Closed"
     }
