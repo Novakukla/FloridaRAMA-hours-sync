@@ -1,11 +1,4 @@
 {
-  "generatedAt": "2026-04-24T05:17:35.300Z",
-  "rows": [
-    {
-      "type": "Limited Hours",
-      "date": "4/24",
-      "open": "12 pm",
-      "close": "5:30 pm"
-    }
-  ]
+  "generatedAt": "2026-04-25T05:02:38.456Z",
+  "rows": []
 }
