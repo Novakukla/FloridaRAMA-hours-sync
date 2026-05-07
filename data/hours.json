@@ -1,11 +1,6 @@
 {
-  "generatedAt": "2026-05-06T05:27:16.525Z",
+  "generatedAt": "2026-05-07T05:27:45.572Z",
   "rows": [
-    {
-      "day": "Wed, May 6",
-      "open": "Closed",
-      "close": "Closed"
-    },
     {
       "day": "Thu, May 7",
       "open": "12 pm",
@@ -33,6 +28,11 @@
     },
     {
       "day": "Tue, May 12",
+      "open": "Closed",
+      "close": "Closed"
+    },
+    {
+      "day": "Wed, May 13",
       "open": "Closed",
       "close": "Closed"
     }
