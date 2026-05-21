@@ -2,6 +2,14 @@ name: Sync Hours Data
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "scripts/sync-hours-data.mjs"
+      - "special-hours-embed.html"
+      - "hours-embed.html"
+      - ".github/workflows/sync-hours.yml"
   schedule:
     # End-of-day style sync (04:15 UTC daily)
     - cron: "15 4 * * *"
