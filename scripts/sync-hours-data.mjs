@@ -383,7 +383,7 @@ function buildSevenDayHours(events) {
 
     if (!event) {
       rows.push({
-        day: formatDayLabel(date),
+        day: offset === 0 ? "Today" : formatDayLabel(date),
         open: "Closed",
         close: "Closed",
       });
@@ -392,7 +392,7 @@ function buildSevenDayHours(events) {
 
     const parsed = parseHoursFromSummary(event.summary);
     rows.push({
-      day: formatDayLabel(date),
+      day: offset === 0 ? "Today" : formatDayLabel(date),
       open: parsed.open || "Closed",
       close: parsed.close || "Closed",
     });
