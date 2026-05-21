@@ -112,6 +112,15 @@ function parseIcsEvents(icsText) {
   return events;
 }
 
+function parseNoteFromSummary(summary) {
+  const match = (summary || "").trim().match(/^NOTE:\s*(.+)$/i);
+  return match ? match[1].trim() : "";
+}
+
+function isNoteEvent(event) {
+  return Boolean(parseNoteFromSummary(event.summary));
+}
+
 function parseRRule(rruleText) {
   const parts = (rruleText || "").split(";");
   const rrule = {};
@@ -579,6 +588,7 @@ function buildSpecialRows(events) {
     .filter((event) => event.status !== "CANCELLED")
     .filter((event) => event.start && event.end)
     .filter((event) => event.start >= today && event.start <= end)
+    .filter((event) => !isNoteEvent(event))
     .sort((a, b) => a.start - b.start);
 
   const eventsByDate = new Map();
@@ -633,6 +643,28 @@ function buildSpecialRows(events) {
   }));
 }
 
+function buildSpecialNotes(events) {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const end = new Date(today);
+  end.setDate(today.getDate() + LOOKAHEAD_DAYS - 1);
+  end.setHours(23, 59, 59, 999);
+
+  return events
+    .filter((event) => event.status !== "CANCELLED")
+    .filter((event) => event.start && event.end)
+    .filter((event) => event.start >= today && event.start <= end)
+    .map((event) => ({
+      text: parseNoteFromSummary(event.summary),
+      sortTime: event.start.getTime(),
+    }))
+    .filter((note) => note.text)
+    .sort((a, b) => a.sortTime - b.sortTime)
+    .map((note) => ({
+      text: note.text,
+    }));
+}
+
 async function main() {
   const response = await fetch(ICS_URL, { method: "GET" });
   if (!response.ok) {
@@ -658,6 +690,7 @@ async function main() {
 
   const hoursRows = buildSevenDayHours(resolvedEvents.slice(0, 120));
   const specialRows = buildSpecialRows(parsedEvents);
+  const specialNotes = buildSpecialNotes(parsedEvents);
 
   const hoursPayload = {
     generatedAt: new Date().toISOString(),
@@ -666,13 +699,16 @@ async function main() {
 
   const specialPayload = {
     generatedAt: new Date().toISOString(),
+    notes: specialNotes,
     rows: specialRows,
   };
 
   writeFileSync("data/hours.json", `${JSON.stringify(hoursPayload, null, 2)}\n`, "utf8");
   writeFileSync("data/special-hours.json", `${JSON.stringify(specialPayload, null, 2)}\n`, "utf8");
 
-  console.log(`Generated ${hoursRows.length} standard-hour rows and ${specialRows.length} special-hour rows.`);
+  console.log(
+    `Generated ${hoursRows.length} standard-hour rows, ${specialRows.length} special-hour rows, and ${specialNotes.length} special-hour notes.`
+  );
 }
 
 main().catch((error) => {

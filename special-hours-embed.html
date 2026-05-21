@@ -145,6 +145,35 @@
       margin-top: 10px;
     }
 
+    .notes {
+      display: grid;
+      gap: 8px;
+      margin: 0 0 14px;
+    }
+
+    .note {
+      color: #ffffff;
+      font-size: clamp(1.05rem, 1.8vw, 1.2rem);
+      line-height: 1.45;
+      font-style: italic;
+      font-weight: 600;
+    }
+
+    .notes--standalone {
+      margin-bottom: 0;
+    }
+
+    .notes--standalone .note {
+      font-size: clamp(1.4rem, 3vw, 2rem);
+      line-height: 1.28;
+    }
+
+    .note-label {
+      color: var(--accent);
+      font-style: normal;
+      font-weight: 800;
+    }
+
     .empty,
     .error {
       border: 1px dashed var(--border);
@@ -203,15 +232,51 @@
     const statusEl = document.getElementById("status");
     const contentEl = document.getElementById("content");
 
-    function renderRows(rows) {
+    function renderNotes(notes, hasRows) {
+      if (!notes.length) {
+        return null;
+      }
+
+      const notesWrap = document.createElement("div");
+      notesWrap.className = hasRows ? "notes" : "notes notes--standalone";
+
+      for (const note of notes) {
+        const text = typeof note === "string" ? note : note.text;
+        if (!text) {
+          continue;
+        }
+
+        const noteEl = document.createElement("p");
+        noteEl.className = "note";
+
+        const label = document.createElement("span");
+        label.className = "note-label";
+        label.textContent = "NOTE:";
+
+        noteEl.appendChild(label);
+        noteEl.append(` ${text}`);
+        notesWrap.appendChild(noteEl);
+      }
+
+      return notesWrap.childElementCount ? notesWrap : null;
+    }
+
+    function renderRows(rows, notes = []) {
       contentEl.innerHTML = "";
+      const noteBlock = renderNotes(notes, rows.length > 0);
+
+      if (noteBlock) {
+        contentEl.appendChild(noteBlock);
+      }
 
       if (!rows.length) {
         statusEl.style.display = "none";
-        const empty = document.createElement("div");
-        empty.className = "empty";
-        empty.textContent = "No special hours in the next 30 days.";
-        contentEl.appendChild(empty);
+        if (!noteBlock) {
+          const empty = document.createElement("div");
+          empty.className = "empty";
+          empty.textContent = "No special hours in the next 30 days.";
+          contentEl.appendChild(empty);
+        }
         return;
       }
 
@@ -272,7 +337,8 @@
 
         const payload = await response.json();
         const rows = Array.isArray(payload.rows) ? payload.rows : [];
-        renderRows(rows);
+        const notes = Array.isArray(payload.notes) ? payload.notes : [];
+        renderRows(rows, notes);
       } catch (error) {
         statusEl.className = "error";
         statusEl.innerHTML = `Could not load special hours: ${error.message} <button id='retrySpecialBtn' style='margin-left:12px;padding:4px 12px;border-radius:6px;border:none;background:#ef779f;color:#fff;font-weight:700;cursor:pointer;'>Retry</button>`;
