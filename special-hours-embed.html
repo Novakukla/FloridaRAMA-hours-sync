@@ -168,12 +168,6 @@
       line-height: 1.28;
     }
 
-    .note-label {
-      color: var(--accent);
-      font-style: normal;
-      font-weight: 800;
-    }
-
     .empty,
     .error {
       border: 1px dashed var(--border);
@@ -249,12 +243,7 @@
         const noteEl = document.createElement("p");
         noteEl.className = "note";
 
-        const label = document.createElement("span");
-        label.className = "note-label";
-        label.textContent = "NOTE:";
-
-        noteEl.appendChild(label);
-        noteEl.append(` ${text}`);
+        noteEl.textContent = text;
         notesWrap.appendChild(noteEl);
       }
 
