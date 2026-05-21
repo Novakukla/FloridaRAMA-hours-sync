@@ -267,9 +267,7 @@ function getDisplayEvents(events, now) {
 
 function formatDayLabel(date) {
   return date.toLocaleDateString(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
+    weekday: "long",
   });
 }
 

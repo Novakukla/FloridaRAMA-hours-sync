@@ -2,37 +2,37 @@
   "generatedAt": "2026-05-21T05:42:38.598Z",
   "rows": [
     {
-      "day": "Thu, May 21",
+      "day": "Thursday",
       "open": "12 pm",
       "close": "8 pm"
     },
     {
-      "day": "Fri, May 22",
+      "day": "Friday",
       "open": "12 pm",
       "close": "8 pm"
     },
     {
-      "day": "Sat, May 23",
+      "day": "Saturday",
       "open": "10 am",
       "close": "8 pm"
     },
     {
-      "day": "Sun, May 24",
+      "day": "Sunday",
       "open": "10 am",
       "close": "8 pm"
     },
     {
-      "day": "Mon, May 25",
+      "day": "Monday",
       "open": "12 pm",
       "close": "8 pm"
     },
     {
-      "day": "Tue, May 26",
+      "day": "Tuesday",
       "open": "Closed",
       "close": "Closed"
     },
     {
-      "day": "Wed, May 27",
+      "day": "Wednesday",
       "open": "Closed",
       "close": "Closed"
     }
