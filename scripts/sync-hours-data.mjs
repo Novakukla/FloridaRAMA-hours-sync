@@ -369,6 +369,10 @@ function buildSevenDayHours(events) {
   }
 
   for (const event of events) {
+    if (isNoteEvent(event)) {
+      continue;
+    }
+
     const key = toDateKey(event.start);
     const existing = eventsByDate.get(key);
     eventsByDate.set(key, choosePreferredEvent(existing, event));
@@ -676,17 +680,12 @@ async function main() {
     .filter((event) => event.status !== "CANCELLED")
     .filter((event) => event.start && event.end);
 
-  const directUpcomingEvents = parsedEvents
-    .filter((event) => event.end >= now)
+  const resolvedEvents = parsedEvents
+    .flatMap((event) => getDisplayEvents([event], now))
     .sort((a, b) => a.start - b.start);
+  const standardHourEvents = resolvedEvents.filter((event) => !isNoteEvent(event));
 
-  const resolvedEvents = directUpcomingEvents.length >= 7
-    ? directUpcomingEvents
-    : parsedEvents
-        .flatMap((event) => getDisplayEvents([event], now))
-        .sort((a, b) => a.start - b.start);
-
-  const hoursRows = buildSevenDayHours(resolvedEvents.slice(0, 120));
+  const hoursRows = buildSevenDayHours(standardHourEvents.slice(0, 120));
   const specialRows = buildSpecialRows(parsedEvents);
   const specialNotes = buildSpecialNotes(parsedEvents);
 
