@@ -100,3 +100,83 @@ test("recurrence-id override wins over the synthetic master occurrence", () => {
     close: "6 pm",
   });
 });
+
+test("closed baseline recurrence does not hide Tuesday bonus hours", () => {
+  const events = parseIcsEvents(
+    calendar(
+      [
+        "BEGIN:VEVENT",
+        "UID:closed-tuesdays",
+        "DTSTART;VALUE=DATE:20231025",
+        "DTEND;VALUE=DATE:20231026",
+        "RRULE:FREQ=WEEKLY;BYDAY=TU",
+        "SUMMARY:Closed",
+        "END:VEVENT",
+      ].join("\n"),
+      [
+        "BEGIN:VEVENT",
+        "UID:exhibit-tuesdays",
+        "DTSTART;VALUE=DATE:20260630",
+        "DTEND;VALUE=DATE:20260701",
+        "RRULE:FREQ=WEEKLY;BYDAY=TU;UNTIL=20260804",
+        "SUMMARY:Exhibit 12pm-8pm",
+        "END:VEVENT",
+      ].join("\n")
+    )
+  );
+
+  assert.deepEqual(buildSpecialRows(events, pinnedNow), [
+    { type: "Bonus Hours", date: "6/30", open: "12 pm", close: "8 pm" },
+    { type: "Bonus Hours", date: "7/7", open: "12 pm", close: "8 pm" },
+    { type: "Bonus Hours", date: "7/14", open: "12 pm", close: "8 pm" },
+    { type: "Bonus Hours", date: "7/21", open: "12 pm", close: "8 pm" },
+    { type: "Bonus Hours", date: "7/28", open: "12 pm", close: "8 pm" },
+    { type: "Bonus Hours", date: "8/4", open: "12 pm", close: "8 pm" },
+  ]);
+});
+
+test("closed event on a normally-open day wins over a non-differing open recurrence", () => {
+  const events = parseIcsEvents(
+    calendar(
+      [
+        "BEGIN:VEVENT",
+        "UID:normal-fridays",
+        "DTSTART;VALUE=DATE:20260626",
+        "DTEND;VALUE=DATE:20260627",
+        "RRULE:FREQ=WEEKLY;BYDAY=FR",
+        "SUMMARY:Open 12pm-8pm",
+        "END:VEVENT",
+      ].join("\n"),
+      [
+        "BEGIN:VEVENT",
+        "UID:closed-friday",
+        "DTSTART;VALUE=DATE:20260703",
+        "DTEND;VALUE=DATE:20260704",
+        "SUMMARY:Closed",
+        "END:VEVENT",
+      ].join("\n")
+    )
+  );
+
+  assert.deepEqual(buildSpecialRows(events, pinnedNow), [
+    { type: "Limited Hours", date: "7/3", open: "Closed", close: "Closed" },
+  ]);
+});
+
+test("closed recurrence on normally-closed Tuesdays produces no special row by itself", () => {
+  const events = parseIcsEvents(
+    calendar(
+      [
+        "BEGIN:VEVENT",
+        "UID:closed-tuesdays",
+        "DTSTART;VALUE=DATE:20231025",
+        "DTEND;VALUE=DATE:20231026",
+        "RRULE:FREQ=WEEKLY;BYDAY=TU",
+        "SUMMARY:Closed",
+        "END:VEVENT",
+      ].join("\n")
+    )
+  );
+
+  assert.deepEqual(buildSpecialRows(events, pinnedNow), []);
+});

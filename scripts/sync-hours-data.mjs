@@ -605,34 +605,16 @@ function parseSpecialHoursFromSummary(summary) {
   return { isClosed: false, openMinutes, closeMinutes };
 }
 
-function scoreSpecialEventForDay(event) {
-  const summary = (event.summary || "").toLowerCase();
-  let score = 0;
-
-  if (event.recurrenceId) {
-    score += 4;
-  }
-  if (/\b(limited|special|bonus|closed)\b/.test(summary)) {
-    score += 2;
-  }
-  score += 1;
-
-  return score;
-}
-
-function choosePreferredSpecialEvent(existing, candidate) {
+function choosePreferredSpecialCandidate(existing, candidate) {
   if (!existing) {
     return candidate;
   }
 
-  const existingScore = scoreSpecialEventForDay(existing);
-  const candidateScore = scoreSpecialEventForDay(candidate);
-
-  if (candidateScore !== existingScore) {
-    return candidateScore > existingScore ? candidate : existing;
+  if (Boolean(candidate.event.recurrenceId) !== Boolean(existing.event.recurrenceId)) {
+    return candidate.event.recurrenceId ? candidate : existing;
   }
 
-  return candidate.start.getTime() >= existing.start.getTime() ? candidate : existing;
+  return candidate.event.start.getTime() >= existing.event.start.getTime() ? candidate : existing;
 }
 
 function getOverlapMinutes(aStart, aEnd, bStart, bEnd) {
@@ -709,8 +691,9 @@ function buildSpecialRows(events, now = new Date()) {
   const eventsByDate = new Map();
   for (const event of futureEvents) {
     const key = toDateKey(event.start);
-    const existing = eventsByDate.get(key);
-    eventsByDate.set(key, choosePreferredSpecialEvent(existing, event));
+    const existing = eventsByDate.get(key) || [];
+    existing.push(event);
+    eventsByDate.set(key, existing);
   }
 
   const rows = [];
@@ -721,19 +704,23 @@ function buildSpecialRows(events, now = new Date()) {
 
     const weekday = date.getDay();
     const normal = NORMAL_HOURS_BY_WEEKDAY[weekday] || null;
-    const dayEvent = eventsByDate.get(toDateKey(date));
+    const dayEvents = eventsByDate.get(toDateKey(date)) || [];
 
-    if (!dayEvent) {
+    let preferredCandidate = null;
+    for (const event of dayEvents) {
+      const actual = parseSpecialHoursFromSummary(event.summary || "");
+      const type = classifyDifference(normal, actual);
+      if (!type) {
+        continue;
+      }
+      preferredCandidate = choosePreferredSpecialCandidate(preferredCandidate, { event, actual, type });
+    }
+
+    if (!preferredCandidate) {
       continue;
     }
 
-    const actual = parseSpecialHoursFromSummary(dayEvent.summary || "");
-    const type = classifyDifference(normal, actual);
-
-    if (!type) {
-      continue;
-    }
-
+    const { actual, type } = preferredCandidate;
     let openText = "Closed";
     let closeText = "Closed";
     if (!actual.isClosed && actual.openMinutes !== null && actual.closeMinutes !== null) {
