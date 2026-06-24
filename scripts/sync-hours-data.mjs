@@ -1,12 +1,10 @@
 import { writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const ICS_URL = process.env.PRIVATE_ICS_URL;
 
-if (!ICS_URL) {
-  throw new Error("Missing PRIVATE_ICS_URL environment variable.");
-}
-
-const LOOKAHEAD_DAYS = 30;
+const LOOKAHEAD_DAYS = 45;
 const NORMAL_HOURS_BY_WEEKDAY = {
   0: { open: "10:00", close: "20:00" },
   1: { open: "12:00", close: "20:00" },
@@ -144,6 +142,21 @@ function startOfWeek(date) {
   return result;
 }
 
+function addDays(date, days) {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+function makeSyntheticOccurrence(event, startDate, durationMs) {
+  return {
+    ...event,
+    synthetic: true,
+    start: startDate,
+    end: new Date(startDate.getTime() + durationMs),
+  };
+}
+
 function getNextRecurringOccurrence(event, now) {
   if (!event.rrule || !event.start || !event.end) {
     return null;
@@ -184,12 +197,7 @@ function getNextRecurringOccurrence(event, now) {
       return null;
     }
 
-    return {
-      ...event,
-      synthetic: true,
-      start: startDate,
-      end: new Date(startDate.getTime() + durationMs),
-    };
+    return makeSyntheticOccurrence(event, startDate, durationMs);
   }
 
   if (freq === "WEEKLY") {
@@ -231,16 +239,115 @@ function getNextRecurringOccurrence(event, now) {
         return null;
       }
 
-      return {
-        ...event,
-        synthetic: true,
-        start: occurrenceStart,
-        end: new Date(occurrenceStart.getTime() + durationMs),
-      };
+      return makeSyntheticOccurrence(event, occurrenceStart, durationMs);
     }
   }
 
   return null;
+}
+
+function getRecurringOccurrencesInRange(event, rangeStart, rangeEnd, now = new Date()) {
+  if (!event.rrule || !event.start || !event.end) {
+    return [event];
+  }
+
+  const rrule = parseRRule(event.rrule);
+  const freq = (rrule.FREQ || "").toUpperCase();
+  const interval = Math.max(1, Number(rrule.INTERVAL || 1));
+  const until = parseIcsDate(rrule.UNTIL || "");
+  const durationMs = event.end.getTime() - event.start.getTime();
+  const dayMs = 24 * 60 * 60 * 1000;
+
+  if (durationMs <= 0 || rangeEnd.getTime() < rangeStart.getTime()) {
+    return [];
+  }
+
+  // Known limitations: EXDATE is not parsed, and CANCELLED RECURRENCE-ID instances do not suppress synthetic master occurrences.
+  const isWithinUntil = (startDate) => {
+    if (!until) {
+      return true;
+    }
+    return startDate.getTime() <= until.getTime();
+  };
+
+  const isWithinRange = (startDate) =>
+    startDate.getTime() >= rangeStart.getTime() && startDate.getTime() <= rangeEnd.getTime();
+
+  if (freq === "DAILY") {
+    const occurrences = [];
+    let startDate = new Date(event.start);
+
+    if (startDate.getTime() < rangeStart.getTime()) {
+      const diffDays = Math.floor((rangeStart.getTime() - startDate.getTime()) / dayMs);
+      const jumps = Math.floor(diffDays / interval);
+      startDate = addDays(startDate, jumps * interval);
+
+      while (startDate.getTime() < rangeStart.getTime()) {
+        startDate = addDays(startDate, interval);
+      }
+    }
+
+    while (startDate.getTime() <= rangeEnd.getTime() && isWithinUntil(startDate)) {
+      if (isWithinRange(startDate)) {
+        occurrences.push(makeSyntheticOccurrence(event, new Date(startDate), durationMs));
+      }
+      startDate = addDays(startDate, interval);
+    }
+
+    return occurrences;
+  }
+
+  if (freq === "WEEKLY") {
+    const byDayMap = { SU: 0, MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6 };
+    const byDays = (rrule.BYDAY || "")
+      .split(",")
+      .map((value) => byDayMap[value])
+      .filter((value) => value !== undefined);
+
+    const allowedDays = byDays.length ? byDays : [event.start.getDay()];
+    const originWeek = startOfWeek(event.start);
+    const searchStart = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), rangeStart.getDate());
+    const occurrences = [];
+
+    for (let offset = 0; ; offset++) {
+      const probeDate = addDays(searchStart, offset);
+      if (probeDate.getTime() > rangeEnd.getTime()) {
+        break;
+      }
+
+      if (!allowedDays.includes(probeDate.getDay())) {
+        continue;
+      }
+
+      const probeWeek = startOfWeek(probeDate);
+      const weekDiff = Math.floor((probeWeek.getTime() - originWeek.getTime()) / (7 * dayMs));
+      if (weekDiff < 0 || weekDiff % interval !== 0) {
+        continue;
+      }
+
+      const occurrenceStart = new Date(probeDate);
+      occurrenceStart.setHours(
+        event.start.getHours(),
+        event.start.getMinutes(),
+        event.start.getSeconds(),
+        event.start.getMilliseconds()
+      );
+
+      if (occurrenceStart.getTime() < event.start.getTime() || !isWithinRange(occurrenceStart)) {
+        continue;
+      }
+
+      if (!isWithinUntil(occurrenceStart)) {
+        break;
+      }
+
+      occurrences.push(makeSyntheticOccurrence(event, occurrenceStart, durationMs));
+    }
+
+    return occurrences;
+  }
+
+  return [event];
 }
 
 function getDisplayEvents(events, now) {
@@ -579,14 +686,20 @@ function classifyDifference(normal, actual) {
   return actualDuration >= normalDuration ? "Bonus Hours" : "Limited Hours";
 }
 
-function buildSpecialRows(events) {
-  const now = new Date();
+function getSpecialHoursWindow(now) {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const end = new Date(today);
   end.setDate(today.getDate() + LOOKAHEAD_DAYS - 1);
   end.setHours(23, 59, 59, 999);
 
-  const futureEvents = events
+  return { today, end };
+}
+
+function buildSpecialRows(events, now = new Date()) {
+  const { today, end } = getSpecialHoursWindow(now);
+  const expandedEvents = events.flatMap((event) => getRecurringOccurrencesInRange(event, today, end, now));
+
+  const futureEvents = expandedEvents
     .filter((event) => event.status !== "CANCELLED")
     .filter((event) => event.start && event.end)
     .filter((event) => event.start >= today && event.start <= end)
@@ -645,14 +758,11 @@ function buildSpecialRows(events) {
   }));
 }
 
-function buildSpecialNotes(events) {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const end = new Date(today);
-  end.setDate(today.getDate() + LOOKAHEAD_DAYS - 1);
-  end.setHours(23, 59, 59, 999);
+function buildSpecialNotes(events, now = new Date()) {
+  const { today, end } = getSpecialHoursWindow(now);
+  const expandedEvents = events.flatMap((event) => getRecurringOccurrencesInRange(event, today, end, now));
 
-  return events
+  return expandedEvents
     .filter((event) => event.status !== "CANCELLED")
     .filter((event) => event.start && event.end)
     .filter((event) => event.start >= today && event.start <= end)
@@ -668,6 +778,10 @@ function buildSpecialNotes(events) {
 }
 
 async function main() {
+  if (!ICS_URL) {
+    throw new Error("Missing PRIVATE_ICS_URL environment variable.");
+  }
+
   const response = await fetch(ICS_URL, { method: "GET" });
   if (!response.ok) {
     throw new Error(`Failed to download ICS feed (${response.status})`);
@@ -686,8 +800,8 @@ async function main() {
   const standardHourEvents = resolvedEvents.filter((event) => !isNoteEvent(event));
 
   const hoursRows = buildSevenDayHours(standardHourEvents.slice(0, 120));
-  const specialRows = buildSpecialRows(parsedEvents);
-  const specialNotes = buildSpecialNotes(parsedEvents);
+  const specialRows = buildSpecialRows(parsedEvents, now);
+  const specialNotes = buildSpecialNotes(parsedEvents, now);
 
   const hoursPayload = {
     generatedAt: new Date().toISOString(),
@@ -708,7 +822,23 @@ async function main() {
   );
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+export {
+  buildSevenDayHours,
+  buildSpecialNotes,
+  buildSpecialRows,
+  getNextRecurringOccurrence,
+  getRecurringOccurrencesInRange,
+  parseIcsDate,
+  parseIcsEvents,
+  parseRRule,
+  toDateKey,
+};
+
+const isEntrypoint = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
+
+if (isEntrypoint) {
+  main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}
