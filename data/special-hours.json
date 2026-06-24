@@ -1,5 +1,42 @@
 {
-  "generatedAt": "2026-06-24T13:37:29.822Z",
+  "generatedAt": "2026-06-24T14:42:55.444Z",
   "notes": [],
-  "rows": []
+  "rows": [
+    {
+      "type": "Bonus Hours",
+      "date": "6/30",
+      "open": "12 pm",
+      "close": "8 pm"
+    },
+    {
+      "type": "Bonus Hours",
+      "date": "7/7",
+      "open": "12 pm",
+      "close": "8 pm"
+    },
+    {
+      "type": "Bonus Hours",
+      "date": "7/14",
+      "open": "12 pm",
+      "close": "8 pm"
+    },
+    {
+      "type": "Bonus Hours",
+      "date": "7/21",
+      "open": "12 pm",
+      "close": "8 pm"
+    },
+    {
+      "type": "Bonus Hours",
+      "date": "7/28",
+      "open": "12 pm",
+      "close": "8 pm"
+    },
+    {
+      "type": "Bonus Hours",
+      "date": "8/4",
+      "open": "12 pm",
+      "close": "8 pm"
+    }
+  ]
 }
