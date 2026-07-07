@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildSpecialNotes, buildSpecialRows, parseIcsEvents } from "../sync-hours-data.mjs";
+import { buildSevenDayHours, buildSpecialNotes, buildSpecialRows, parseIcsEvents } from "../sync-hours-data.mjs";
 
 const pinnedNow = new Date(2026, 5, 24, 9, 0, 0, 0);
 
@@ -133,6 +133,35 @@ test("closed baseline recurrence does not hide Tuesday bonus hours", () => {
     { type: "Bonus Hours", date: "7/28", open: "12 pm", close: "8 pm" },
     { type: "Bonus Hours", date: "8/4", open: "12 pm", close: "8 pm" },
   ]);
+});
+
+test("standard hours uses special Tuesday hours instead of the closed baseline", () => {
+  const events = parseIcsEvents(
+    calendar(
+      [
+        "BEGIN:VEVENT",
+        "UID:closed-tuesday",
+        "DTSTART;VALUE=DATE:20260707",
+        "DTEND;VALUE=DATE:20260708",
+        "SUMMARY:Closed",
+        "END:VEVENT",
+      ].join("\n"),
+      [
+        "BEGIN:VEVENT",
+        "UID:bonus-tuesday",
+        "DTSTART;TZID=America/New_York:20260707T120000",
+        "DTEND;TZID=America/New_York:20260707T200000",
+        "SUMMARY:Exhibit 12pm-8pm",
+        "END:VEVENT",
+      ].join("\n")
+    )
+  );
+
+  assert.deepEqual(buildSevenDayHours(events, new Date(2026, 6, 7, 9, 0, 0, 0))[0], {
+    day: "Today",
+    open: "12 pm",
+    close: "8 pm",
+  });
 });
 
 test("closed event on a normally-open day wins over a non-differing open recurrence", () => {
