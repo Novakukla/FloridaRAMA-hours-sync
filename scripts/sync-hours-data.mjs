@@ -438,8 +438,8 @@ function parseHoursFromSummary(summary) {
   return { open, close, special };
 }
 
-function buildSevenDayHours(events) {
-  const today = new Date();
+function buildSevenDayHours(events, now = new Date()) {
+  const today = new Date(now);
   today.setHours(0, 0, 0, 0);
 
   const eventsByDate = new Map();
@@ -481,8 +481,9 @@ function buildSevenDayHours(events) {
     }
 
     const key = toDateKey(event.start);
-    const existing = eventsByDate.get(key);
-    eventsByDate.set(key, choosePreferredEvent(existing, event));
+    const existing = eventsByDate.get(key) || [];
+    existing.push(event);
+    eventsByDate.set(key, existing);
   }
 
   const rows = [];
@@ -490,8 +491,29 @@ function buildSevenDayHours(events) {
     const date = new Date(today);
     date.setDate(today.getDate() + offset);
     const key = toDateKey(date);
-    const event = eventsByDate.get(key);
+    const dayEvents = eventsByDate.get(key) || [];
+    const normal = NORMAL_HOURS_BY_WEEKDAY[date.getDay()] || null;
 
+    let preferredCandidate = null;
+    for (const event of dayEvents) {
+      const actual = parseSpecialHoursFromSummary(event.summary || "");
+      const type = classifyDifference(normal, actual);
+      if (!type) {
+        continue;
+      }
+      preferredCandidate = choosePreferredSpecialCandidate(preferredCandidate, { event, actual, type });
+    }
+
+    if (preferredCandidate) {
+      rows.push({
+        day: offset === 0 ? "Today" : formatDayLabel(date),
+        open: formatLabelTime(preferredCandidate.actual.openMinutes),
+        close: formatLabelTime(preferredCandidate.actual.closeMinutes),
+      });
+      continue;
+    }
+
+    const event = dayEvents.reduce((preferred, candidate) => choosePreferredEvent(preferred, candidate), null);
     if (!event) {
       rows.push({
         day: offset === 0 ? "Today" : formatDayLabel(date),
