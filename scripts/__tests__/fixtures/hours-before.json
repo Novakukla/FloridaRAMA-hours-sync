@@ -1,0 +1,40 @@
+{
+  "generatedAt": "2026-10-26T04:15:00.000Z",
+  "rows": [
+    {
+      "day": "Today",
+      "open": "12 am",
+      "close": "12 am"
+    },
+    {
+      "day": "Tuesday",
+      "open": "12 pm",
+      "close": "8 pm"
+    },
+    {
+      "day": "Wednesday",
+      "open": "4",
+      "close": "11 pm"
+    },
+    {
+      "day": "Thursday",
+      "open": "12 am",
+      "close": "12 am"
+    },
+    {
+      "day": "Friday",
+      "open": "12 am",
+      "close": "12 am"
+    },
+    {
+      "day": "Saturday",
+      "open": "9 pm",
+      "close": "11 pm"
+    },
+    {
+      "day": "Sunday",
+      "open": "12 am",
+      "close": "4 am"
+    }
+  ]
+}

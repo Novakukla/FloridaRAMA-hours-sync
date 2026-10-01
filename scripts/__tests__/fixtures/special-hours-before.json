@@ -1,0 +1,178 @@
+{
+  "generatedAt": "2026-10-26T04:15:00.000Z",
+  "notes": [
+    {
+      "text": "Open 1am-11pm is a note only."
+    }
+  ],
+  "rows": [
+    {
+      "type": "Limited Hours",
+      "date": "10/26",
+      "open": "Closed",
+      "close": "Closed"
+    },
+    {
+      "type": "Bonus Hours",
+      "date": "10/27",
+      "open": "12 pm",
+      "close": "8 pm"
+    },
+    {
+      "type": "Limited Hours",
+      "date": "10/29",
+      "open": "Closed",
+      "close": "Closed"
+    },
+    {
+      "type": "Limited Hours",
+      "date": "10/30",
+      "open": "Closed",
+      "close": "Closed"
+    },
+    {
+      "type": "Limited Hours",
+      "date": "10/31",
+      "open": "9 pm",
+      "close": "11 pm"
+    },
+    {
+      "type": "Limited Hours",
+      "date": "11/1",
+      "open": "12 am",
+      "close": "4 am"
+    },
+    {
+      "type": "Limited Hours",
+      "date": "11/2",
+      "open": "12 pm",
+      "close": "7:30 pm"
+    },
+    {
+      "type": "Bonus Hours",
+      "date": "11/3",
+      "open": "1 am",
+      "close": "11 pm"
+    },
+    {
+      "type": "Limited Hours",
+      "date": "11/5",
+      "open": "12 pm",
+      "close": "7:30 pm"
+    },
+    {
+      "type": "Limited Hours",
+      "date": "11/6",
+      "open": "12 pm",
+      "close": "7:30 pm"
+    },
+    {
+      "type": "Limited Hours",
+      "date": "11/7",
+      "open": "12 pm",
+      "close": "7:30 pm"
+    },
+    {
+      "type": "Limited Hours",
+      "date": "11/9",
+      "open": "12 pm",
+      "close": "7:30 pm"
+    },
+    {
+      "type": "Limited Hours",
+      "date": "11/12",
+      "open": "12 pm",
+      "close": "7:30 pm"
+    },
+    {
+      "type": "Limited Hours",
+      "date": "11/13",
+      "open": "12 pm",
+      "close": "7:30 pm"
+    },
+    {
+      "type": "Limited Hours",
+      "date": "11/14",
+      "open": "12 pm",
+      "close": "7:30 pm"
+    },
+    {
+      "type": "Limited Hours",
+      "date": "11/16",
+      "open": "12 pm",
+      "close": "7:30 pm"
+    },
+    {
+      "type": "Limited Hours",
+      "date": "11/19",
+      "open": "12 pm",
+      "close": "7:30 pm"
+    },
+    {
+      "type": "Limited Hours",
+      "date": "11/20",
+      "open": "12 pm",
+      "close": "7:30 pm"
+    },
+    {
+      "type": "Limited Hours",
+      "date": "11/21",
+      "open": "12 pm",
+      "close": "7:30 pm"
+    },
+    {
+      "type": "Limited Hours",
+      "date": "11/23",
+      "open": "12 pm",
+      "close": "7:30 pm"
+    },
+    {
+      "type": "Limited Hours",
+      "date": "11/26",
+      "open": "12 pm",
+      "close": "7:30 pm"
+    },
+    {
+      "type": "Limited Hours",
+      "date": "11/27",
+      "open": "12 pm",
+      "close": "7:30 pm"
+    },
+    {
+      "type": "Limited Hours",
+      "date": "11/28",
+      "open": "12 pm",
+      "close": "7:30 pm"
+    },
+    {
+      "type": "Limited Hours",
+      "date": "11/30",
+      "open": "12 pm",
+      "close": "7:30 pm"
+    },
+    {
+      "type": "Limited Hours",
+      "date": "12/3",
+      "open": "12 pm",
+      "close": "7:30 pm"
+    },
+    {
+      "type": "Limited Hours",
+      "date": "12/4",
+      "open": "12 pm",
+      "close": "7:30 pm"
+    },
+    {
+      "type": "Limited Hours",
+      "date": "12/5",
+      "open": "12 pm",
+      "close": "7:30 pm"
+    },
+    {
+      "type": "Limited Hours",
+      "date": "12/7",
+      "open": "12 pm",
+      "close": "7:30 pm"
+    }
+  ]
+}

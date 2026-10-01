@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ICS_URL = process.env.PRIVATE_ICS_URL;
+let failedHttpStatus = null;
 
 const LOOKAHEAD_DAYS = 45;
 const NORMAL_HOURS_BY_WEEKDAY = {
@@ -74,7 +75,8 @@ function parseIcsEvents(icsText) {
     }
 
     if (line === "END:VEVENT") {
-      if (current?.start && current?.end) {
+      if ((current?.start && current?.end) ||
+          (current?.uid && current?.recurrenceId && current?.status === "CANCELLED")) {
         events.push(current);
       }
       current = null;
@@ -148,12 +150,18 @@ function addDays(date, days) {
   return result;
 }
 
+function calendarDayNumber(date) {
+  return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / (24 * 60 * 60 * 1000);
+}
+
 function makeSyntheticOccurrence(event, startDate, durationMs) {
   return {
     ...event,
     synthetic: true,
     start: startDate,
-    end: new Date(startDate.getTime() + durationMs),
+    end: event.isAllDay
+      ? addDays(startDate, calendarDayNumber(event.end) - calendarDayNumber(event.start))
+      : new Date(startDate.getTime() + durationMs),
   };
 }
 
@@ -167,7 +175,6 @@ function getNextRecurringOccurrence(event, now) {
   const interval = Math.max(1, Number(rrule.INTERVAL || 1));
   const until = parseIcsDate(rrule.UNTIL || "");
   const durationMs = event.end.getTime() - event.start.getTime();
-  const dayMs = 24 * 60 * 60 * 1000;
 
   if (durationMs <= 0) {
     return null;
@@ -184,12 +191,12 @@ function getNextRecurringOccurrence(event, now) {
     let startDate = new Date(event.start);
 
     if (startDate.getTime() < now.getTime()) {
-      const diffDays = Math.floor((now.getTime() - startDate.getTime()) / dayMs);
+      const diffDays = calendarDayNumber(now) - calendarDayNumber(startDate);
       const jumps = Math.floor(diffDays / interval);
-      startDate = new Date(startDate.getTime() + jumps * interval * dayMs);
+      startDate = addDays(startDate, jumps * interval);
 
-      while (startDate.getTime() + durationMs < now.getTime()) {
-        startDate = new Date(startDate.getTime() + interval * dayMs);
+      while (makeSyntheticOccurrence(event, startDate, durationMs).end < now) {
+        startDate = addDays(startDate, interval);
       }
     }
 
@@ -212,13 +219,13 @@ function getNextRecurringOccurrence(event, now) {
     const searchStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
     for (let offset = 0; offset <= 370; offset++) {
-      const probeDate = new Date(searchStart.getTime() + offset * dayMs);
+      const probeDate = addDays(searchStart, offset);
       if (!allowedDays.includes(probeDate.getDay())) {
         continue;
       }
 
       const probeWeek = startOfWeek(probeDate);
-      const weekDiff = Math.floor((probeWeek.getTime() - originWeek.getTime()) / (7 * dayMs));
+      const weekDiff = (calendarDayNumber(probeWeek) - calendarDayNumber(originWeek)) / 7;
       if (weekDiff < 0 || weekDiff % interval !== 0) {
         continue;
       }
@@ -231,7 +238,7 @@ function getNextRecurringOccurrence(event, now) {
         event.start.getMilliseconds()
       );
 
-      if (occurrenceStart.getTime() + durationMs < now.getTime()) {
+      if (makeSyntheticOccurrence(event, occurrenceStart, durationMs).end < now) {
         continue;
       }
 
@@ -256,13 +263,12 @@ function getRecurringOccurrencesInRange(event, rangeStart, rangeEnd, now = new D
   const interval = Math.max(1, Number(rrule.INTERVAL || 1));
   const until = parseIcsDate(rrule.UNTIL || "");
   const durationMs = event.end.getTime() - event.start.getTime();
-  const dayMs = 24 * 60 * 60 * 1000;
 
   if (durationMs <= 0 || rangeEnd.getTime() < rangeStart.getTime()) {
     return [];
   }
 
-  // Known limitations: EXDATE is not parsed, and CANCELLED RECURRENCE-ID instances do not suppress synthetic master occurrences.
+  // EXDATE is not parsed. The open-windows builder resolves RECURRENCE-ID replacements separately.
   const isWithinUntil = (startDate) => {
     if (!until) {
       return true;
@@ -278,7 +284,7 @@ function getRecurringOccurrencesInRange(event, rangeStart, rangeEnd, now = new D
     let startDate = new Date(event.start);
 
     if (startDate.getTime() < rangeStart.getTime()) {
-      const diffDays = Math.floor((rangeStart.getTime() - startDate.getTime()) / dayMs);
+      const diffDays = calendarDayNumber(rangeStart) - calendarDayNumber(startDate);
       const jumps = Math.floor(diffDays / interval);
       startDate = addDays(startDate, jumps * interval);
 
@@ -320,7 +326,7 @@ function getRecurringOccurrencesInRange(event, rangeStart, rangeEnd, now = new D
       }
 
       const probeWeek = startOfWeek(probeDate);
-      const weekDiff = Math.floor((probeWeek.getTime() - originWeek.getTime()) / (7 * dayMs));
+      const weekDiff = (calendarDayNumber(probeWeek) - calendarDayNumber(originWeek)) / 7;
       if (weekDiff < 0 || weekDiff % interval !== 0) {
         continue;
       }
@@ -600,6 +606,114 @@ function parseMinutesFrom24hText(value) {
   return h * 60 + m;
 }
 
+function parseWindowMinutes(summary) {
+  const { open, close } = parseHoursFromSummary(summary);
+  const closeMinutes = parseTimeToMinutes(close);
+  if (closeMinutes === null) {
+    return null;
+  }
+
+  let openMinutes = parseTimeToMinutes(open);
+  const closeMeridiem = normalizeTimeToken(close).match(/(am|pm)$/)[1];
+  if (openMinutes === null && /^\d{1,2}(?::\d{2})?$/.test(normalizeTimeToken(open))) {
+    openMinutes = parseTimeToMinutes(`${open}${closeMeridiem}`);
+    if (openMinutes !== null && openMinutes >= closeMinutes) {
+      openMinutes = parseTimeToMinutes(`${open}${closeMeridiem === "pm" ? "am" : "pm"}`);
+    }
+  }
+
+  return openMinutes === null ? null : { openMinutes, closeMinutes };
+}
+
+function formatOffsetTimestamp(date) {
+  const pad = (value) => String(value).padStart(2, "0");
+  const offset = -date.getTimezoneOffset();
+  return `${toDateKey(date)}T${pad(date.getHours())}:${pad(date.getMinutes())}:00` +
+    `${offset >= 0 ? "+" : "-"}${pad(Math.floor(Math.abs(offset) / 60))}:${pad(Math.abs(offset) % 60)}`;
+}
+
+// Like the website builders, all-day dates use the process timezone. The sync runs with TZ=America/New_York.
+function buildOpenWindows(events, now = new Date()) {
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const rangeStart = addDays(today, -1);
+  const rangeEnd = addDays(today, 7);
+  rangeEnd.setHours(23, 59, 59, 999);
+  const eventsByDate = new Map();
+  const exceptionKeys = new Set();
+  const occurrenceKey = (uid, date) => JSON.stringify([uid, toDateKey(date)]);
+  for (const event of events) {
+    const recurrenceDate = parseIcsDate(event.recurrenceId);
+    if (event.uid && recurrenceDate) {
+      exceptionKeys.add(occurrenceKey(event.uid, recurrenceDate));
+    }
+  }
+
+  for (const event of events) {
+    if (event.status === "CANCELLED" || !event.start || !event.end || isNoteEvent(event)) {
+      continue;
+    }
+    for (const occurrence of getRecurringOccurrencesInRange(event, rangeStart, rangeEnd, now)) {
+      if (occurrence.start < rangeStart || occurrence.start > rangeEnd ||
+          (!event.recurrenceId && exceptionKeys.has(occurrenceKey(event.uid, occurrence.start)))) {
+        continue;
+      }
+      const key = toDateKey(occurrence.start);
+      const dayEvents = eventsByDate.get(key) || [];
+      dayEvents.push(occurrence);
+      eventsByDate.set(key, dayEvents);
+    }
+  }
+
+  const windows = [];
+  for (const [date, dayEvents] of eventsByDate) {
+    const closed = dayEvents.some((event) => !event.synthetic && parseHoursFromSummary(event.summary).open === "Closed");
+    const dayWindows = [];
+    for (const event of dayEvents) {
+      if (closed && event.synthetic) {
+        continue;
+      }
+      const minutes = parseWindowMinutes(event.summary);
+      if (!minutes) {
+        continue;
+      }
+      const start = new Date(event.start);
+      start.setHours(0, minutes.openMinutes, 0, 0);
+      const end = new Date(event.start);
+      end.setDate(end.getDate() + (minutes.closeMinutes <= minutes.openMinutes ? 1 : 0));
+      end.setHours(0, minutes.closeMinutes, 0, 0);
+      // Date setters can normalize nonexistent spring-forward times to the same instant.
+      if (end <= start || end <= today) {
+        continue;
+      }
+      dayWindows.push({ start, end });
+    }
+    dayWindows.sort((a, b) => a.start - b.start);
+    const merged = [];
+    for (const window of dayWindows) {
+      const previous = merged.at(-1);
+      if (previous && window.start <= previous.end) {
+        if (window.end > previous.end) {
+          previous.end = window.end;
+        }
+      } else {
+        merged.push(window);
+      }
+    }
+    windows.push(...merged.map(({ start, end }) => ({ date, start, end })));
+  }
+
+  windows.sort((a, b) => a.start - b.start);
+  // RAMAnet accepts at most 64 windows; keep the nearest windows when the calendar is dense.
+  if (windows.length > 64) {
+    console.warn(`Open windows: publishing the earliest 64 of ${windows.length}; omitting ${windows.length - 64}.`);
+  }
+  return windows.slice(0, 64).map(({ date, start, end }) => ({
+    date,
+    start: formatOffsetTimestamp(start),
+    end: formatOffsetTimestamp(end),
+  }));
+}
+
 function parseSpecialHoursFromSummary(summary) {
   const text = (summary || "").trim();
   if (!text) {
@@ -793,24 +907,29 @@ async function main() {
 
   const response = await fetch(ICS_URL, { method: "GET" });
   if (!response.ok) {
+    failedHttpStatus = response.status;
     throw new Error(`Failed to download ICS feed (${response.status})`);
   }
 
   const icsText = await response.text();
   const now = new Date();
+  const websiteNow = new Date(now);
+  websiteNow.setHours(0, 15, 0, 0);
 
-  const parsedEvents = parseIcsEvents(icsText)
+  const calendarEvents = parseIcsEvents(icsText);
+  const parsedEvents = calendarEvents
     .filter((event) => event.status !== "CANCELLED")
     .filter((event) => event.start && event.end);
 
   const resolvedEvents = parsedEvents
-    .flatMap((event) => getDisplayEvents([event], now))
+    .flatMap((event) => getDisplayEvents([event], websiteNow))
     .sort((a, b) => a.start - b.start);
   const standardHourEvents = resolvedEvents.filter((event) => !isNoteEvent(event));
 
-  const hoursRows = buildSevenDayHours(standardHourEvents.slice(0, 120));
-  const specialRows = buildSpecialRows(parsedEvents, now);
-  const specialNotes = buildSpecialNotes(parsedEvents, now);
+  const hoursRows = buildSevenDayHours(standardHourEvents.slice(0, 120), websiteNow);
+  const specialRows = buildSpecialRows(parsedEvents, websiteNow);
+  const specialNotes = buildSpecialNotes(parsedEvents, websiteNow);
+  const openWindows = buildOpenWindows(calendarEvents, now);
 
   const hoursPayload = {
     generatedAt: new Date().toISOString(),
@@ -825,13 +944,19 @@ async function main() {
 
   writeFileSync("data/hours.json", `${JSON.stringify(hoursPayload, null, 2)}\n`, "utf8");
   writeFileSync("data/special-hours.json", `${JSON.stringify(specialPayload, null, 2)}\n`, "utf8");
+  writeFileSync("data/open-windows.json", `${JSON.stringify({
+    generatedAt: now.toISOString(),
+    timeZone: "America/New_York",
+    windows: openWindows,
+  }, null, 2)}\n`, "utf8");
 
   console.log(
-    `Generated ${hoursRows.length} standard-hour rows, ${specialRows.length} special-hour rows, and ${specialNotes.length} special-hour notes.`
+    `Generated ${hoursRows.length} standard-hour rows, ${specialRows.length} special-hour rows, ${specialNotes.length} special-hour notes, and ${openWindows.length} open windows.`
   );
 }
 
 export {
+  buildOpenWindows,
   buildSevenDayHours,
   buildSpecialNotes,
   buildSpecialRows,
@@ -846,8 +971,10 @@ export {
 const isEntrypoint = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 
 if (isEntrypoint) {
-  main().catch((error) => {
-    console.error(error);
+  main().catch(() => {
+    console.error(failedHttpStatus === null
+      ? "Hours data sync failed."
+      : `Hours data sync failed (HTTP ${failedHttpStatus}).`);
     process.exitCode = 1;
   });
 }
