@@ -1,7 +1,13 @@
 {
-  "generatedAt": "2026-10-21T18:32:22.121Z",
+  "generatedAt": "2026-10-21T19:10:06.873Z",
   "notes": [],
   "rows": [
+    {
+      "type": "Limited Hours",
+      "date": "10/24",
+      "open": "12:30 pm",
+      "close": "8 pm"
+    },
     {
       "type": "Bonus Hours",
       "date": "10/30",
