@@ -1,5 +1,18 @@
 {
-  "generatedAt": "2026-11-08T05:19:49.298Z",
+  "generatedAt": "2026-11-09T00:41:55.428Z",
   "notes": [],
-  "rows": []
+  "rows": [
+    {
+      "type": "Limited Hours",
+      "date": "12/5",
+      "open": "5 pm",
+      "close": "8 pm"
+    },
+    {
+      "type": "Limited Hours",
+      "date": "12/12",
+      "open": "10 am",
+      "close": "4 pm"
+    }
+  ]
 }
